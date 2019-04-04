@@ -1,2 +1,3 @@
 from pcori_pytorch.models.hierarchical_crf import HierarchicalCRF
 from pcori_pytorch.models.hierarchical_srnn import HierarchicalSRNN
+from pcori_pytorch.models.independent_rnn import IndependentRNN

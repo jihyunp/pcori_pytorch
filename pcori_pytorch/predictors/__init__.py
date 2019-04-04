@@ -1,2 +1,3 @@
 from pcori_pytorch.predictors.hierarchical_crf_predictor import HierarchicalCRFPredictor
+from pcori_pytorch.predictors.independent_rnn_predictor import IndependentRNNPredictor
 from pcori_pytorch.predictors.heirarchical_srnn_predictor import HierarchicalSRNNPredictor
