@@ -1,6 +1,6 @@
 {
     "vocabulary": {
-        "directory_path": "/home/jihyunp/research/pcori/data/glove/6B_50d/mhd_vocab"
+        "directory_path": "/home/jihyunp/research/pcori/data/glove/840B_300d/mhd_vocab"
     },
     "dataset_reader": {
         "type": "independent_mhd",
@@ -12,35 +12,36 @@
         }
     },
     "train_data_path": "/home/jihyunp/research/pcori/data/topic/nn_mhd_independent/nn_data_fold_0_train.jsonl",
-    "validation_data_path": "/home/jihyunp/research/pcori/data/topic/nn_mhd_independent/nn_data_fold_0_train.jsonl",
+    "validation_data_path": "/home/jihyunp/research/pcori/data/topic/nn_mhd_independent/nn_data_fold_0_test.jsonl",
     "model": {
         "type": "independent_rnn",
-        "dropout": 0.5,
+        "emb_dropout": 0.2,
+        "fc_dropout": 0.2,
         "text_field_embedder": {
             "tokens": {
-                "pretrained_file": "/home/jihyunp/research/pcori/data/glove/6B_50d/glove_mhd_word_embeddings.txt.gz'
+                "pretrained_file": "/home/jihyunp/research/pcori/data/glove/840B_300d/glove_mhd_word_embeddings.txt.gz",
                 "type": "embedding",
-                "embedding_dim": 50,
+                "embedding_dim": 300,
                 "trainable": true
             }
         },
         "inner_encoder": {
             "type": "lstm",
-            "input_size": 50,
-            "hidden_size": 32,
+            "input_size": 300,
+            "hidden_size": 64,
             "dropout": 0.5,
             "num_layers": 1,
             "bidirectional": true
         }
     },
-    "iterator": {"type": "basic", "batch_size": 50},
+    "iterator": {"type": "basic", "batch_size": 128},
     "trainer": {
         "optimizer": {
-            "type": "sgd",
+            "type": "adam",
             "lr": 0.001
         },
-        "num_epochs": 50,
-        "cuda_device": 0,
+        "num_epochs": 20,
+        "cuda_device": 1,
         "validation_metric": "+accuracy",
         "patience": 10
     }

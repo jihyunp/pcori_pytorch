@@ -32,7 +32,7 @@ class IndepMHDDatasetReader(DatasetReader):
             'session_id': '...',
             'utterance': ['Tokens', 'in', 'first', 'utterance', ...],
             'speaker': ['...'],
-            'label': ['...']
+            'labels': ['...']
         }
 
     The output of ``read`` is a list of ``Instance``s with the fields:
@@ -71,15 +71,15 @@ class IndepMHDDatasetReader(DatasetReader):
                 session_id = session_json['session_id']
                 utterance = session_json['utterance']
                 speaker = session_json['speaker']
-                label = session_json['label']
-                yield self.text_to_instance(session_id, utterance, speaker, label)
+                labels = session_json['label']
+                yield self.text_to_instance(session_id, utterance, speaker, labels)
 
     @overrides
     def text_to_instance(self,
                          session_id: str,
                          utterance: List[str],
                          speaker: str,
-                         label: str = None) -> Instance: # type: ignore
+                         labels: str = None) -> Instance: # type: ignore
         # pylint: disable=arguments-differ
         fields: Dict[str, Field] = {}
         # Since each session consists of a sequence of utterances, which themselves are sequences
@@ -95,12 +95,11 @@ class IndepMHDDatasetReader(DatasetReader):
         # in the text. Perhaps use a seperate indexer?
         tokenized_speaker = Token(speaker)
         fields['speaker'] = TextField([tokenized_speaker], self._token_indexers)
-        if label is not None:
-            fields['label'] = LabelField(label)
+        if labels is not None:
+            fields['labels'] = LabelField(labels)
         # Add metadata to help with debugging / visualization.
         fields['metadata'] = MetadataField({
             'session_id': session_id,
-            'utterance_text': [x.text for x in tokenized_utterance],
             'speaker_text': tokenized_speaker.text
         })
         return Instance(fields)

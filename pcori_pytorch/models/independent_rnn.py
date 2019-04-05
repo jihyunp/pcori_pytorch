@@ -36,8 +36,9 @@ class IndependentRNN(Model):
                  vocab: Vocabulary,
                  text_field_embedder: TextFieldEmbedder,
                  inner_encoder: Seq2VecEncoder,
-                 label_namespace: str = "label",
-                 dropout: float = None,
+                 label_namespace: str = "labels",
+                 emb_dropout: float = None,
+                 fc_dropout: float = None,
                  label_smoothing: float = None,
                  initializer: InitializerApplicator = InitializerApplicator(),
                  regularizer: Optional[RegularizerApplicator] = None) -> None:
@@ -48,15 +49,21 @@ class IndependentRNN(Model):
         self.inner_encoder = inner_encoder
         self.label_projection_layer = Linear(in_features=inner_encoder.get_output_dim(),
                                              out_features=self.num_labels)
-        if dropout:
-            self.dropout = torch.nn.Dropout(dropout)
+        if emb_dropout:
+            self.emb_dropout = torch.nn.Dropout(emb_dropout)
         else:
-            self.dropout = None
+            self.emb_dropout = None
+
+        if fc_dropout:
+            self.fc_dropout = torch.nn.Dropout(fc_dropout)
+        else:
+            self.fc_dropout = None
 
         self._label_smoothing = label_smoothing
 
         self._loss = torch.nn.CrossEntropyLoss()
-        self.metrics = {"accuracy": CategoricalAccuracy()}
+        self._accuracy = CategoricalAccuracy()
+        self.metrics = {"accuracy": self._accuracy}
         check_dimensions_match(text_field_embedder.get_output_dim(),
                                inner_encoder.get_input_dim(),
                                'text field embedding dim',
@@ -67,35 +74,39 @@ class IndependentRNN(Model):
     def forward(self,
                 utterance: Dict[str, torch.LongTensor],
                 speaker: Dict[str, torch.LongTensor],
-                label: torch.LongTensor = None,
+                labels: torch.LongTensor = None,
                 metadata: List[Dict[str, Any]] = None) -> Dict[str, torch.Tensor]:
 
         mask = util.get_text_field_mask(utterance).float()
         batch_size, n_words = mask.shape
 
         # Apply embeddings
-        embedded_utterances = self.text_field_embedder(utterance)
+        embedded_utterances = self.text_field_embedder(utterance) # (batch, emb_dim)
 
-        # Apply dropout
-        if self.dropout:
-            embedded_utterances = self.dropout(embedded_utterances)
+        # Apply emb_dropout
+        if self.emb_dropout:
+            embedded_utterances = self.emb_dropout(embedded_utterances)
 
         # Get LSTM Encoded
-        encoded = self.inner_encoder(embedded_utterances, mask)  # (batch*n_utter, lstmout_dim)
+        encoded = self.inner_encoder(embedded_utterances, mask)  # (batch, lstmout_dim)
 
-        logits = self.label_projection_layer(encoded)
+        # FC dropout
+        if self.fc_dropout:
+            encoded = self.fc_dropout(encoded)
+
+        logits = self.label_projection_layer(encoded)  # (batch, num_labels)
         probs = F.softmax(logits, dim=-1)
-        #reshaped_log_probs = logits.view(-1, self.num_labels)
-        #class_probabilities = F.softmax(reshaped_log_probs, dim=-1).view([batch_size,
-        #                                                                  self.num_labels])
-        output = {'logits': logits, 'class_probabilities': probs,
+        predicted = torch.max(logits, -1)[-1]
+
+        output = {'predicted': predicted,
+                  'logits': logits, 'class_probabilities': probs,
                   'mask': mask}
 
-        if label is not None:
-            loss = self._loss(logits, label.long().view(-1))
+        if labels is not None:
+            loss = self._loss(logits, labels.view(-1))
             output['loss'] = loss
-            for metric in self.metrics.values():
-                metric(logits, label)
+
+            self._accuracy(logits, labels.view(-1))
 
         if metadata is not None:
             output['metadata'] = metadata
@@ -104,8 +115,11 @@ class IndependentRNN(Model):
 
     @overrides
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
-         return {metric_name: metric.get_metric(reset)
-                 for metric_name, metric in self.metrics.items()}
+        metrics = {'accuracy': self._accuracy.get_metric(reset)}
+        return metrics
+    #def get_metrics(self, reset: bool = False) -> Dict[str, float]:
+    #     return {metric_name: metric.get_metric(reset)
+    #             for metric_name, metric in self.metrics.items()}
         # return {'accuracy': self.metrics['accuracy'].get_metric(reset=reset),
         #         'f1_neg': self.metrics['f1_neg'].get_metric(reset=reset)[2],
         #         'f1_pos': self.metrics['f1_pos'].get_metric(reset=reset)[2]}
@@ -115,8 +129,9 @@ class IndependentRNN(Model):
         embedder_params = params.pop('text_field_embedder')
         text_field_embedder = TextFieldEmbedder.from_params(vocab, embedder_params)
         inner_encoder = Seq2VecEncoder.from_params(params.pop('inner_encoder'))
-        label_namespace = params.pop('label_namespace', 'label')
-        dropout = params.pop('dropout', None)
+        label_namespace = params.pop('label_namespace', 'labels')
+        emb_dropout = params.pop('emb_dropout', None)
+        fc_dropout = params.pop('fc_dropout', None)
         label_smoothing = params.pop('label_smoothing', None)
         initializer = InitializerApplicator.from_params(params.pop('initializer', []))
         regularizer = RegularizerApplicator.from_params(params.pop('regularizer', []))
@@ -127,7 +142,8 @@ class IndependentRNN(Model):
                    text_field_embedder=text_field_embedder,
                    inner_encoder=inner_encoder,
                    label_namespace=label_namespace,
-                   dropout=dropout,
+                   emb_dropout=emb_dropout,
+                   fc_dropout=fc_dropout,
                    label_smoothing=label_smoothing,
                    initializer=initializer,
                    regularizer=regularizer)
