@@ -1,6 +1,6 @@
 {
     "vocabulary": {
-        "directory_path": "/home/jihyunp/research/pcori/data/glove/840B_300d/mhd_vocab"
+        "directory_path": "/home/jihyunp/research/pcori/data/glove/6B_100d/mhd_vocab"
     },
     "dataset_reader": {
         "type": "independent_mhd",
@@ -19,15 +19,15 @@
         "fc_dropout": 0.2,
         "text_field_embedder": {
             "tokens": {
-                "pretrained_file": "/home/jihyunp/research/pcori/data/glove/840B_300d/glove_mhd_word_embeddings.txt.gz",
+                "pretrained_file": "/home/jihyunp/research/pcori/data/glove/6B_100d/glove_mhd_word_embeddings.txt.gz",
                 "type": "embedding",
-                "embedding_dim": 300,
+                "embedding_dim": 100,
                 "trainable": true
             }
         },
         "inner_encoder": {
             "type": "lstm",
-            "input_size": 300,
+            "input_size": 100,
             "hidden_size": 64,
             "dropout": 0.5,
             "num_layers": 1,
@@ -41,7 +41,7 @@
             "lr": 0.001
         },
         "num_epochs": 20,
-        "cuda_device": 1,
+        "cuda_device": 0,
         "validation_metric": "+accuracy",
         "patience": 10
     }

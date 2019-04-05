@@ -79,7 +79,7 @@ class HierarchicalRNN(Model):
         self.label_projection_layer = TimeDistributed(Linear(outer_encoder.get_output_dim(),
                                                              self.num_tags))
         # self.metrics = {"accuracy": FuckingAccuracy()}
-        self.metrics = {"accuracy": CategoricalAccuracy(), "accuracyf": FuckingAccuracy()}
+        self.metrics = {"accuracy": CategoricalAccuracy()}
         self._loss = torch.nn.CrossEntropyLoss()
 
         check_dimensions_match(text_field_embedder.get_output_dim(),
@@ -154,7 +154,7 @@ class HierarchicalRNN(Model):
         logits = self.label_projection_layer(outer_encoded)
         # (batch, n_utter, n_labels)
 
-        reshaped_log_probs = logits.view(-1, self.num_labels)
+        reshaped_log_probs = logits.view(-1, self.num_tags)
         class_probabilities = F.softmax(reshaped_log_probs, dim=-1).view([batch_size,
                                                                           n_utterances,
                                                                           self.num_tags])
@@ -165,8 +165,7 @@ class HierarchicalRNN(Model):
         if labels is not None:
             loss = util.sequence_cross_entropy_with_logits(logits,
                                                            labels,
-                                                           outer_mask,
-                                                           label_smoothing=self._label_smoothing)
+                                                           outer_mask)
             for metric in self.metrics.values():
                 metric(logits, labels, outer_mask.float())
             output['loss'] = loss
