@@ -79,7 +79,8 @@ class HierarchicalRNN(Model):
         self.label_projection_layer = TimeDistributed(Linear(outer_encoder.get_output_dim(),
                                                              self.num_tags))
         # self.metrics = {"accuracy": FuckingAccuracy()}
-        self.metrics = {"accuracy": CategoricalAccuracy()}
+        self.metrics = {"accuracy": CategoricalAccuracy(), "accuracyf": FuckingAccuracy()}
+        self._loss = torch.nn.CrossEntropyLoss()
 
         check_dimensions_match(text_field_embedder.get_output_dim(),
                                inner_encoder.get_input_dim(),
@@ -144,16 +145,20 @@ class HierarchicalRNN(Model):
         # Unflatten and get outer encodings
         inner_encoded = inner_encoded.view(batch_size, n_utterances, -1)
         outer_encoded = self.outer_encoder(inner_encoded, outer_mask)
+        # (batch, n_utter, lstm_out_dim)
+
         if self.dropout:
             outer_encoded = self.dropout(outer_encoded)
 
-        # Project and apply CRF
+        # Project
         logits = self.label_projection_layer(outer_encoded)
+        # (batch, n_utter, n_labels)
 
         reshaped_log_probs = logits.view(-1, self.num_labels)
         class_probabilities = F.softmax(reshaped_log_probs, dim=-1).view([batch_size,
                                                                           n_utterances,
                                                                           self.num_tags])
+        # predicted = torch.max(logits, -1)[-1]  # (batch, n_utter)
         output = {'logits': logits, 'class_probabilities': class_probabilities,
                   'inner_mask': inner_mask, 'outer_mask': outer_mask}
 
