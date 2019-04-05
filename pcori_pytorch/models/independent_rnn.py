@@ -117,12 +117,6 @@ class IndependentRNN(Model):
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
         metrics = {'accuracy': self._accuracy.get_metric(reset)}
         return metrics
-    #def get_metrics(self, reset: bool = False) -> Dict[str, float]:
-    #     return {metric_name: metric.get_metric(reset)
-    #             for metric_name, metric in self.metrics.items()}
-        # return {'accuracy': self.metrics['accuracy'].get_metric(reset=reset),
-        #         'f1_neg': self.metrics['f1_neg'].get_metric(reset=reset)[2],
-        #         'f1_pos': self.metrics['f1_pos'].get_metric(reset=reset)[2]}
 
     @classmethod
     def from_params(cls, vocab: Vocabulary, params: Params) -> 'IndependentRNN':
